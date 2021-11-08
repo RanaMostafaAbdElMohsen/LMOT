@@ -59,7 +59,7 @@ class opts(object):
                              help='visualization threshold.')
     self.parser.add_argument('--debugger_theme', default='white', 
                              choices=['white', 'black'])
-    self.parser.add_argument('--eval_val', action='store_true', default=True)
+    self.parser.add_argument('--eval_val', action='store_true')
     self.parser.add_argument('--save_imgs', default='', help='')
     self.parser.add_argument('--save_img_suffix', default='', help='')
     self.parser.add_argument('--skip_first', type=int, default=-1, help='')
@@ -114,20 +114,21 @@ class opts(object):
 
     # train
     self.parser.add_argument('--optim', default='adam')
-    self.parser.add_argument('--lr', type=float, default=3e-5,
+    self.parser.add_argument('--lr', type=float, default=3e-5, 
                              help='learning rate for batch size 32.')
-    self.parser.add_argument('--lr_step', type=str, default='70',
+    self.parser.add_argument('--lr_step', type=str, default='80',
                              help='drop learning rate by 10.')
-    self.parser.add_argument('--save_point', type=str, default='90',
+    self.parser.add_argument('--save_point', type=str, default='10',
                              help='when to save the model to disk.')
-    self.parser.add_argument('--num_epochs', type=int, default=70, help='total training epochs.')
-    self.parser.add_argument('--batch_size', type=int, default=8,
+    self.parser.add_argument('--num_epochs', type=int, default=20,
+                             help='total training epochs.')
+    self.parser.add_argument('--batch_size', type=int, default=6,
                              help='batch size')
     self.parser.add_argument('--master_batch_size', type=int, default=-1,
                              help='batch size on the master gpu.')
     self.parser.add_argument('--num_iters', type=int, default=-1,
                              help='default: #samples / batch_size.')
-    self.parser.add_argument('--val_intervals', type=int, default=1000000,
+    self.parser.add_argument('--val_intervals', type=int, default=10000,
                              help='number of epochs to run validation.')
     self.parser.add_argument('--trainval', action='store_true',
                              help='include validation in training and '
@@ -149,7 +150,7 @@ class opts(object):
                              help='multi scale test augmentation.')
     self.parser.add_argument('--nms', action='store_true',
                              help='run nms in testing.')
-    self.parser.add_argument('--K', type=int, default=200,
+    self.parser.add_argument('--K', type=int, default=100,
                              help='max number of output objects.') 
     self.parser.add_argument('--not_prefetch_test', action='store_true',
                              help='not use parallal data pre-processing.')
@@ -211,6 +212,8 @@ class opts(object):
     self.parser.add_argument('--fp_disturb', type=float, default=0)
     self.parser.add_argument('--pre_thresh', type=float, default=-1)
     self.parser.add_argument('--track_thresh', type=float, default=0.3)
+    self.parser.add_argument('--match_thresh', type=float, default=0.8)
+    self.parser.add_argument('--track_buffer', type=int, default=30)    
     self.parser.add_argument('--new_thresh', type=float, default=0.3)
     self.parser.add_argument('--max_frame_dist', type=int, default=3)
     self.parser.add_argument('--ltrb_amodal', action='store_true')
@@ -223,7 +226,7 @@ class opts(object):
 
 
     # loss
-    self.parser.add_argument('--tracking_weight', type=float, default=1)
+    self.parser.add_argument('--tracking_weight', type=float, default=0)
     self.parser.add_argument('--reg_loss', default='l1',
                              help='regression loss: sl1 | l1 | l2')
     self.parser.add_argument('--hm_weight', type=float, default=1,
@@ -252,7 +255,8 @@ class opts(object):
     # custom dataset
     self.parser.add_argument('--custom_dataset_img_path', default='')
     self.parser.add_argument('--custom_dataset_ann_path', default='')
-
+    self.parser.add_argument('--bird_view_world_size', type=int, default=64)
+    
   def parse(self, args=''):
     if args == '':
       opt = self.parser.parse_args()
@@ -279,9 +283,9 @@ class opts(object):
     if 'tracking' in opt.task:
       print('Running tracking')
       opt.tracking = True
-      opt.out_thresh = max(opt.track_thresh, opt.out_thresh)
-      opt.pre_thresh = max(opt.track_thresh, opt.pre_thresh)
-      opt.new_thresh = max(opt.track_thresh, opt.new_thresh)
+#       opt.out_thresh = max(opt.track_thresh, opt.out_thresh)
+#       opt.pre_thresh = max(opt.track_thresh, opt.pre_thresh)
+#       opt.new_thresh = max(opt.track_thresh, opt.new_thresh)
       opt.pre_img = not opt.no_pre_img
       print('Using tracking threshold for out threshold!', opt.track_thresh)
       if 'ddd' in opt.task:

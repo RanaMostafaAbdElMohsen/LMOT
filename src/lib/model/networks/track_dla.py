@@ -1,4 +1,4 @@
-from .backbone import build_backbone
+from .dla_backbone import dla34
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -10,9 +10,9 @@ def fill_fc_weights(layers):
             if m.bias is not None:
                 nn.init.constant_(m.bias, 0)
 
-class TrackResnet(nn.Module):
+class TrackDla(nn.Module):
     def __init__(self, heads, head_convs, opt=None):
-        super(TrackResnet, self).__init__()
+        super(TrackDla, self).__init__()
         if opt is not None and opt.head_kernel != 3:
           print('Using head kernel:', opt.head_kernel)
           head_kernel = opt.head_kernel
@@ -66,7 +66,7 @@ class TrackResnet(nn.Module):
                 fill_fc_weights(fc)
             self.__setattr__(head, fc)
 
-        self.backbone = build_backbone().cuda()
+        self.backbone = dla34()
 
         self.trans = linear_tiny(511, 4, 2040)
 
@@ -121,7 +121,6 @@ class TrackResnet(nn.Module):
     def forward(self, x, pre_img, pre_hm):
         image_features = self.backbone(x)
 
-        # all_inputs = torch.cat([x, pre_img, pre_hm], dim=1)
         all_inputs = torch.cat([pre_img, pre_hm], dim=1)
 
         trans_feats = self.trans(all_inputs)

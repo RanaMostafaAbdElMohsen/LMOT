@@ -12,7 +12,9 @@ import os
 # from .networks.resnet import PoseResNet
 # from .networks.dlav0 import DLASegv0
 # from .networks.generic_network import GenericNetwork
-from .networks.tracknet import Tracknet
+# from .networks.tracknet import Tracknet
+# from .networks.trackresnet import TrackResnet
+from .networks.track_dla import TrackDla
 
 # _network_factory = {
 #   'resdcn': PoseResDCN,
@@ -26,7 +28,8 @@ def create_model(arch, head, head_conv, opt=None):
   # num_layers = int(arch[arch.find('_') + 1:]) if '_' in arch else 0
   # arch = arch[:arch.find('_')] if '_' in arch else arch
   # model_class = _network_factory[arch]
-  model = Tracknet(heads=head, head_convs=head_conv, opt=opt)
+  # model = Tracknet(heads=head, head_convs=head_conv, opt=opt)
+  model= TrackDla(heads=head, head_convs=head_conv, opt=opt)
   return model
 
 def load_model(model, model_path, opt, optimizer=None):

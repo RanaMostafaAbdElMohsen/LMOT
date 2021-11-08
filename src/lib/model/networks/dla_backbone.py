@@ -1,21 +1,9 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import os
-import math
-import logging
-import numpy as np
-from os.path import join
-
 import torch
 from torch import nn
-import torch.nn.functional as F
+from os.path import join
 import torch.utils.model_zoo as model_zoo
 
-
 BN_MOMENTUM = 0.1
-logger = logging.getLogger(__name__)
 
 def get_model_url(data='imagenet', name='dla34', hash='ba72cf86'):
     return join('http://dl.yf.io/dla/models', data, '{}-{}.pth'.format(name, hash))
@@ -242,30 +230,7 @@ class DLA(nn.Module):
                            level_root=True, root_residual=residual_root)
         self.level4 = Tree(levels[4], block, channels[3], channels[4], 2,
                            level_root=True, root_residual=residual_root)
-        self.level5 = Tree(levels[5], block, channels[4], channels[5], 2,
-                           level_root=True, root_residual=residual_root)
-        # for m in self.modules():
-        #     if isinstance(m, nn.Conv2d):
-        #         n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-        #         m.weight.data.normal_(0, math.sqrt(2. / n))
-        #     elif isinstance(m, nn.BatchNorm2d):
-        #         m.weight.data.fill_(1)
-        #         m.bias.data.zero_()
-        if opt.pre_img:
-            print('adding pre_img layer...')
-            self.pre_img_layer = nn.Sequential(
-            nn.Conv2d(3, channels[0], kernel_size=7, stride=1,
-                      padding=3, bias=False),
-            nn.BatchNorm2d(channels[0], momentum=BN_MOMENTUM),
-            nn.ReLU(inplace=True))
-        if opt.pre_hm:
-            print('adding pre_hm layer...')
-            self.pre_hm_layer = nn.Sequential(
-            nn.Conv2d(1, channels[0], kernel_size=7, stride=1,
-                    padding=3, bias=False),
-            nn.BatchNorm2d(channels[0], momentum=BN_MOMENTUM),
-            nn.ReLU(inplace=True))
-
+        
     def _make_level(self, block, inplanes, planes, blocks, stride=1):
         downsample = None
         if stride != 1 or inplanes != planes:
@@ -298,13 +263,10 @@ class DLA(nn.Module):
     def forward(self, x, pre_img=None, pre_hm=None):
         y = []
         x = self.base_layer(x)
-        if pre_img is not None:
-            x = x + self.pre_img_layer(pre_img)
-        if pre_hm is not None:
-            x = x + self.pre_hm_layer(pre_hm)
-        for i in range(6):
+        for i in range(5):
             x = getattr(self, 'level{}'.format(i))(x)
-            y.append(x)
+            if i>=2:
+                y.append(x)
         
         return y
 
@@ -314,60 +276,12 @@ class DLA(nn.Module):
         else:
             model_url = get_model_url(data, name, hash)
             model_weights = model_zoo.load_url(model_url)
-        num_classes = len(model_weights[list(model_weights.keys())[-1]])
-        self.fc = nn.Conv2d(
-            self.channels[-1], num_classes,
-            kernel_size=1, stride=1, padding=0, bias=True)
         self.load_state_dict(model_weights, strict=False)
-
-model_dict = {
-    'dla34': (
-        [1, 1, 1, 2, 2, 1], 
-        [16, 32, 64, 128, 256, 512],
-        'ba72cf86'),
-    'dla102': (
-        [1, 1, 1, 3, 4, 1],
-        [16, 32, 128, 256, 512, 1024],
-        'd94d9790'),
-    'dla46_c': (
-        [1, 1, 1, 2, 2, 1],
-        [16, 32, 64, 64, 128, 256],
-        '2bfd52c3'),
-    'dla46x_c': (
-        [1, 1, 1, 2, 2, 1],
-        [16, 32, 64, 64, 128, 256],
-        'd761bae7'),
-    'dla60x_c': (
-        [1, 1, 1, 2, 3, 1],
-        [16, 32, 64, 64, 128, 256],
-        'b870c45c'),
-    'dla60': (
-        [1, 1, 1, 2, 3, 1],
-        [16, 32, 128, 256, 512, 1024],
-        '24839fc4'),
-    'dla60x': (
-        [1, 1, 1, 2, 3, 1],
-        [16, 32, 128, 256, 512, 1024],
-        'd15cacda'),
-    'dla102x': (
-        [1, 1, 1, 3, 4, 1], 
-        [16, 32, 128, 256, 512, 1024],
-        'ad62be81'),
-    'dla102x2': (
-        [1, 1, 1, 3, 4, 1], 
-        [16, 32, 128, 256, 512, 1024],
-        '262837b6'),
-    'dla169': (
-        [1, 1, 2, 3, 5, 1], 
-        [16, 32, 128, 256, 512, 1024],
-        '0914e092'
-    )
-}
 
 
 def dla34(pretrained=True, **kwargs):  # DLA-34
     model = DLA([1, 1, 1, 2, 2, 1],
-                [16, 32, 64, 128, 256, 512],
+                [16, 32, 64, 128, 256],
                 block=BasicBlock, **kwargs)
     if pretrained:
         model.load_pretrained_model(
@@ -376,95 +290,16 @@ def dla34(pretrained=True, **kwargs):  # DLA-34
         print('Warning: No ImageNet pretrain!!')
     return model
 
-def dla102(pretrained=None, **kwargs):  # DLA-102
-    Bottleneck.expansion = 2
-    model = DLA([1, 1, 1, 3, 4, 1], [16, 32, 128, 256, 512, 1024],
-                block=Bottleneck, residual_root=True, **kwargs)
-    if pretrained:
-        model.load_pretrained_model(
-            data='imagenet', name='dla102', hash='d94d9790')
-    return model
 
-def dla46_c(pretrained=None, **kwargs):  # DLA-46-C
-    Bottleneck.expansion = 2
-    model = DLA([1, 1, 1, 2, 2, 1],
-                [16, 32, 64, 64, 128, 256],
-                block=Bottleneck, **kwargs)
-    if pretrained is not None:
-        model.load_pretrained_model(
-            data='imagenet', name='dla46_c', hash='2bfd52c3')
-    return model
+# if __name__ == '__main__':
 
-
-def dla46x_c(pretrained=None, **kwargs):  # DLA-X-46-C
-    BottleneckX.expansion = 2
-    model = DLA([1, 1, 1, 2, 2, 1],
-                [16, 32, 64, 64, 128, 256],
-                block=BottleneckX, **kwargs)
-    if pretrained is not None:
-        model.load_pretrained_model(
-            data='imagenet', name='dla46x_c', hash='d761bae7')
-    return model
-
-
-def dla60x_c(pretrained=None, **kwargs):  # DLA-X-60-C
-    BottleneckX.expansion = 2
-    model = DLA([1, 1, 1, 2, 3, 1],
-                [16, 32, 64, 64, 128, 256],
-                block=BottleneckX, **kwargs)
-    if pretrained is not None:
-        model.load_pretrained_model(
-            data='imagenet', name='dla60x_c', hash='b870c45c')
-    return model
-
-
-def dla60(pretrained=None, **kwargs):  # DLA-60
-    Bottleneck.expansion = 2
-    model = DLA([1, 1, 1, 2, 3, 1],
-                [16, 32, 128, 256, 512, 1024],
-                block=Bottleneck, **kwargs)
-    if pretrained is not None:
-        model.load_pretrained_model(
-            data='imagenet', name='dla60', hash='24839fc4')
-    return model
-
-
-def dla60x(pretrained=None, **kwargs):  # DLA-X-60
-    BottleneckX.expansion = 2
-    model = DLA([1, 1, 1, 2, 3, 1],
-                [16, 32, 128, 256, 512, 1024],
-                block=BottleneckX, **kwargs)
-    if pretrained is not None:
-        model.load_pretrained_model(
-            data='imagenet', name='dla60x', hash='d15cacda')
-    return model
-
-
-def dla102x(pretrained=None, **kwargs):  # DLA-X-102
-    BottleneckX.expansion = 2
-    model = DLA([1, 1, 1, 3, 4, 1], [16, 32, 128, 256, 512, 1024],
-                block=BottleneckX, residual_root=True, **kwargs)
-    if pretrained is not None:
-        model.load_pretrained_model(
-            data='imagenet', name='dla102x', hash='ad62be81')
-    return model
-
-
-def dla102x2(pretrained=None, **kwargs):  # DLA-X-102 64
-    BottleneckX.cardinality = 64
-    model = DLA([1, 1, 1, 3, 4, 1], [16, 32, 128, 256, 512, 1024],
-                block=BottleneckX, residual_root=True, **kwargs)
-    if pretrained is not None:
-        model.load_pretrained_model(
-            data='imagenet', name='dla102x2', hash='262837b6')
-    return model
-
-
-def dla169(pretrained=None, **kwargs):  # DLA-169
-    Bottleneck.expansion = 2
-    model = DLA([1, 1, 2, 3, 5, 1], [16, 32, 128, 256, 512, 1024],
-                block=Bottleneck, residual_root=True, **kwargs)
-    if pretrained is not None:
-        model.load_pretrained_model(
-            data='imagenet', name='dla169', hash='0914e092')
-    return model
+#     # Test
+#     x = torch.randn(1, 3, 544, 960)
+#     m = dla34()
+#     out = m(x)
+#     print('-----')
+#     print(f'num params: {sum(p.numel() for p in m.parameters())}')
+#     print(out.shape)
+#     loss = out.sum()
+#     loss.backward()
+#     print('Single iteration completed successfully')

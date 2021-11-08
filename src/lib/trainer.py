@@ -16,6 +16,7 @@ from model.decode import generic_decode
 from model.utils import _sigmoid, flip_tensor, flip_lr_off, flip_lr
 from utils.debugger import Debugger
 from utils.post_process import generic_post_process
+import gc
 
 class GenericLoss(torch.nn.Module):
   def __init__(self, opt):
@@ -95,10 +96,14 @@ class ModleWithLoss(torch.nn.Module):
   def forward(self, batch):
     pre_img = batch['pre_img'] if 'pre_img' in batch else None
     pre_hm = batch['pre_hm'] if 'pre_hm' in batch else None
-    outputs = self.model(batch['image'], pre_img, pre_hm,
-    batch['image_half_scaled'],batch['image_quarter_scaled'],
-    batch['pre_img_half_scaled'],batch['pre_img_quarter_scaled'])
+    outputs = self.model(batch['image'], pre_img, pre_hm)
+    del pre_hm, pre_img
+    torch.cuda.empty_cache()
+    gc.collect()
     loss, loss_stats = self.loss(outputs, batch)
+    del batch
+    torch.cuda.empty_cache()
+    gc.collect()
     return outputs[-1], loss, loss_stats
 
 class Trainer(object):

@@ -12,7 +12,7 @@ from ..generic_dataset import GenericDataset
 
 class MOT(GenericDataset):
   num_categories = 1
-  default_resolution = [272, 480]
+  default_resolution = [544, 960]
   class_name = ['']
   max_objs = 256
   cat_ids = {1: 1, -1: -1}
@@ -91,7 +91,8 @@ class MOT(GenericDataset):
     gt_type_str = '_val_half' if self.year in [16, 19] else gt_type_str
     gt_type_str = '--gt_type {}'.format(gt_type_str) if gt_type_str != '' else \
       ''
-    os.system('python tools/eval_motchallenge.py ' + \
-              '../data/mot{}/{}/ '.format(self.year, 'train') + \
+    os.system('python /home/rana/Documents/Research_Projects/CenterTrack/Masters_Thesis/src/tools/eval_motchallenge.py ' + \
+              '/home/rana/Downloads/MOT{}/{}/ '.format(self.year, 'train') + \
               '{}/results_mot{}/ '.format(save_dir, self.dataset_version) + \
-              gt_type_str + ' --eval_official')
+              gt_type_str + ' --eval_official'
+              )

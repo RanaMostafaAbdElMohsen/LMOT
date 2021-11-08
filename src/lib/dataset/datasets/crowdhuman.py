@@ -11,9 +11,10 @@ import os
 from ..generic_dataset import GenericDataset
 
 class CrowdHuman(GenericDataset):
-  num_classes = 1
+  num_categories = 1
+  num_classes =1 
   num_joints = 17
-  default_resolution = [512, 512]
+  default_resolution = [544, 960]
   max_objs = 128
   class_name = ['person']
   cat_ids = {1: 1}

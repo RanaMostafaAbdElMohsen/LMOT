@@ -47,8 +47,6 @@ class Detector(object):
     self.flip_idx = self.trained_dataset.flip_idx
     self.cnt = 0
     self.pre_images = None
-    self.pre_image_half_scaled=None
-    self.pre_image_quarter_scaled=None
     self.pre_image_ori = None
     self.tracker = Tracker(opt)
     self.debugger = Debugger(opt=opt, dataset=self.trained_dataset)
@@ -85,8 +83,6 @@ class Detector(object):
       else:
         # prefetch testing
         images = pre_processed_images['images'][scale][0]
-        image_half_scaled = pre_processed_images['meta'][scale]['image_half_scaled'][0]
-        image_quarter_scaled = pre_processed_images['meta'][scale]['image_quarter_scaled'][0]
         meta = pre_processed_images['meta'][scale]
         meta = {k: v.numpy()[0] for k, v in meta.items()}
         if 'pre_dets' in pre_processed_images['meta']:
@@ -95,8 +91,7 @@ class Detector(object):
           meta['cur_dets'] = pre_processed_images['meta']['cur_dets']
       
       images = images.to(self.opt.device, non_blocking=self.opt.non_block_test)
-      image_half_scaled = image_half_scaled.to(self.opt.device, non_blocking=self.opt.non_block_test)
-      image_quarter_scaled = image_quarter_scaled.to(self.opt.device, non_blocking=self.opt.non_block_test)
+
       # initializing tracker
       pre_hms, pre_inds = None, None
       if self.opt.tracking:
@@ -104,8 +99,6 @@ class Detector(object):
         if self.pre_images is None:
           print('Initialize tracking!')
           self.pre_images = images
-          self.pre_image_half_scaled= image_half_scaled
-          self.pre_image_quarter_scaled= image_quarter_scaled
           self.tracker.init_track(
             meta['pre_dets'] if 'pre_dets' in meta else [])
         if self.opt.pre_hm:
@@ -123,10 +116,7 @@ class Detector(object):
       # output: the output feature maps, only used for visualizing
       # dets: output tensors after extracting peaks
       output, dets, forward_time = self.process(
-        images, self.pre_images, pre_hms, pre_inds, 
-        image_half_scaled, image_quarter_scaled,
-        self.pre_image_half_scaled, self.pre_image_quarter_scaled,
-        return_time=True)
+        images, self.pre_images, pre_hms, pre_inds, return_time=True)
       net_time += forward_time - pre_process_time
       decode_time = time.time()
       dec_time += decode_time - forward_time
@@ -232,48 +222,16 @@ class Detector(object):
     inp_image = ((inp_image / 255. - self.mean) / self.std).astype(np.float32)
 
     images = inp_image.transpose(2, 0, 1).reshape(1, 3, inp_height, inp_width)
-
-    trans_input_half_scaled = get_affine_transform(
-      c, s, 0, [inp_width/2, inp_height/2])
-    
-    trans_input_quarter_scaled = get_affine_transform(
-      c, s, 0, [inp_width/4, inp_height/4])
-
-    inp_image_half_scaled = cv2.warpAffine(
-      resized_image, trans_input_half_scaled, (int(inp_width/2), int(inp_height/2)),
-      flags=cv2.INTER_LINEAR)
-    inp_image_half_scaled = ((inp_image_half_scaled / 255. - self.mean) / self.std).astype(np.float32)
-
-    inp_image_quarter_scaled = cv2.warpAffine(
-      resized_image, trans_input_quarter_scaled, (int(inp_width/4), int(inp_height/4)),
-      flags=cv2.INTER_LINEAR)
-    inp_image_quarter_scaled = ((inp_image_quarter_scaled / 255. - self.mean) / self.std).astype(np.float32)
-    
-    image_half_scaled = inp_image_half_scaled.transpose(2, 0, 1).reshape(1, 3, int(inp_height/2), int(inp_width/2))
-    image_quarter_scaled = inp_image_quarter_scaled.transpose(2, 0, 1).reshape(1, 3, int(inp_height/4), int(inp_width/4))
-
     if self.opt.flip_test:
       images = np.concatenate((images, images[:, :, :, ::-1]), axis=0)
-      image_half_scaled = np.concatenate((image_half_scaled, image_half_scaled[:, :, :, ::-1]),
-          axis=0)
-      image_quarter_scaled = np.concatenate((image_quarter_scaled, image_quarter_scaled[:, :, :, ::-1]),
-          axis=0)
-
     images = torch.from_numpy(images)
-    image_half_scaled = torch.from_numpy(image_half_scaled)
-    image_quarter_scaled = torch.from_numpy(image_quarter_scaled)
-
     meta = {'calib': np.array(input_meta['calib'], dtype=np.float32) \
              if 'calib' in input_meta else \
              self._get_default_calib(width, height)}
     meta.update({'c': c, 's': s, 'height': height, 'width': width,
             'out_height': out_height, 'out_width': out_width,
             'inp_height': inp_height, 'inp_width': inp_width,
-            'trans_input': trans_input, 'trans_output': trans_output,
-            'trans_input_half_scaled': trans_input_half_scaled, 
-            'trans_input_quarter_scaled': trans_input_quarter_scaled,
-            'image_half_scaled': image_half_scaled, 
-            'image_quarter_scaled': image_quarter_scaled})
+            'trans_input': trans_input, 'trans_output': trans_output})
     if 'pre_dets' in input_meta:
       meta['pre_dets'] = input_meta['pre_dets']
     if 'cur_dets' in input_meta:
@@ -374,14 +332,11 @@ class Detector(object):
     return output
 
 
-  def process(self, images, pre_images, pre_hms,
-    pre_inds,  image_half_scaled, image_quarter_scaled,
-    pre_image_half_scaled, pre_image_quarter_scaled, return_time=False):
+  def process(self, images, pre_images=None, pre_hms=None,
+    pre_inds=None, return_time=False):
     with torch.no_grad():
       torch.cuda.synchronize()
-      output = self.model(images, pre_images, pre_hms, 
-      image_half_scaled, image_quarter_scaled, 
-      pre_image_half_scaled, pre_image_quarter_scaled)[-1]
+      output = self.model(images, pre_images, pre_hms)[-1]
       output = self._sigmoid_output(output)
       output.update({'pre_inds': pre_inds})
       if self.opt.flip_test:

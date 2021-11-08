@@ -94,22 +94,8 @@ class GenericDataset(data.Dataset):
       c, s, rot, [opt.input_w, opt.input_h])
     trans_output = get_affine_transform(
       c, s, rot, [opt.output_w, opt.output_h])
-    inp = self._get_input(img, trans_input, opt.input_w, opt.input_h)
+    inp = self._get_input(img, trans_input)
     ret = {'image': inp}
-
-    ## Image scaled to 136, 240
-    trans_input_half_scaled = get_affine_transform(
-      c, s, rot, [opt.input_w/2, opt.input_h/2])
-    inp_half_scaled = self._get_input(img, trans_input_half_scaled, int(opt.input_w/2), int(opt.input_h/2))
-    ret ['image_half_scaled']= inp_half_scaled
-
-    ## Image scaled to 68, 120
-    trans_input_quarter_scaled = get_affine_transform(
-      c, s, rot, [opt.input_w/4, opt.input_h/4])
-    
-    inp_quarter_scaled = self._get_input(img, trans_input_quarter_scaled, int(opt.input_w/4), int(opt.input_h/4))
-    ret ['image_quarter_scaled']= inp_quarter_scaled
-
     gt_det = {'bboxes': [], 'scores': [], 'clses': [], 'cts': []}
 
     pre_cts, track_ids = None, None
@@ -123,10 +109,6 @@ class GenericDataset(data.Dataset):
       if opt.same_aug_pre and frame_dist != 0:
         trans_input_pre = trans_input 
         trans_output_pre = trans_output
-         ## transformation half scale
-        trans_input_pre_half_scaled = trans_input_half_scaled
-        ## transformation quarter scale
-        trans_input_pre_quarter_scaled = trans_input_quarter_scaled
       else:
         c_pre, aug_s_pre, _ = self._get_aug_param(
           c, s, width, height, disturb=True)
@@ -135,32 +117,12 @@ class GenericDataset(data.Dataset):
           c_pre, s_pre, rot, [opt.input_w, opt.input_h])
         trans_output_pre = get_affine_transform(
           c_pre, s_pre, rot, [opt.output_w, opt.output_h])
-
-        trans_input_pre_half_scaled = get_affine_transform(
-          c_pre, s_pre, rot, [opt.input_w/2, opt.input_h/2])
-        
-        trans_input_pre_quarter_scaled = get_affine_transform(
-          c_pre, s_pre, rot, [opt.input_w/4, opt.input_h/4])
-
-      
-      pre_img = self._get_input(pre_image, trans_input_pre, opt.input_w, opt.input_h)
-      ret['pre_img'] = pre_img
-      
-      # transformation half scale
-      pre_img_half_scaled = self._get_input(pre_image, trans_input_pre_half_scaled, int(opt.input_w/2), int(opt.input_h/2))
-      ret['pre_img_half_scaled'] = pre_img_half_scaled
-
-      # transformation quarter scale
-      pre_img_quarter_scaled = self._get_input(pre_image, trans_input_pre_quarter_scaled, int(opt.input_w/4), int(opt.input_h/4))
-      ret['pre_img_quarter_scaled'] = pre_img_quarter_scaled
-
+      pre_img = self._get_input(pre_image, trans_input_pre)
       pre_hm, pre_cts, track_ids = self._get_pre_dets(
         pre_anns, trans_input_pre, trans_output_pre)
-
+      ret['pre_img'] = pre_img
       if opt.pre_hm:
         ret['pre_hm'] = pre_hm
-      
-
     
     ### init samples
     self._init_ret(ret, gt_det)
@@ -351,9 +313,10 @@ class GenericDataset(data.Dataset):
 
     return anns
 
-  def _get_input(self, img, trans_input, width, height):
+
+  def _get_input(self, img, trans_input):
     inp = cv2.warpAffine(img, trans_input, 
-                        (width, height),
+                        (self.opt.input_w, self.opt.input_h),
                         flags=cv2.INTER_LINEAR)
     
     inp = (inp.astype(np.float32) / 255.)
@@ -362,6 +325,7 @@ class GenericDataset(data.Dataset):
     inp = (inp - self.mean) / self.std
     inp = inp.transpose(2, 0, 1)
     return inp
+
 
   def _init_ret(self, ret, gt_det):
     max_objs = self.max_objs * self.opt.dense_reg
