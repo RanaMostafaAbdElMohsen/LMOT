@@ -41,13 +41,15 @@ if __name__ == '__main__':
         for i in range(len(anns)):
           ann_cnt += 1
           ann = {'id': ann_cnt,
-                 'category_id': 1,
-                 'image_id': image_cnt,
-                 'bbox_vis': anns[i]['vbox'],
-                 'bbox': anns[i]['fbox'],
-                 'iscrowd': 1 if 'extra' in anns[i] and \
-                                 'ignore' in anns[i]['extra'] and \
-                                 anns[i]['extra']['ignore'] == 1 else 0}
+                'category_id': 1,
+                'image_id': image_cnt,
+                'track_id': -1,
+                'bbox_vis': anns[i]['vbox'],
+                'bbox': anns[i]['fbox'],
+                'iscrowd': 1 if 'extra' in anns[i] and \
+                                'ignore' in anns[i]['extra'] and \
+                                anns[i]['extra']['ignore'] == 1 else 0
+                }
           out['annotations'].append(ann)
   print('loaded {} for {} images and {} samples'.format(
     split, len(out['images']), len(out['annotations'])))

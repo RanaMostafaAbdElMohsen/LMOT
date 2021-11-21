@@ -243,7 +243,6 @@ class Tracker(object):
         # Predict the current location with KF
         STrack.multi_predict(strack_pool)
         dists = matching.iou_distance(strack_pool, detections)
-        dists = matching.fuse_motion(self.kalman_filter, dists, strack_pool, detections)
         matches, u_track, u_detection = matching.linear_assignment(dists, thresh=self.args.match_thresh)
 
         for itracked, idet in matches:
