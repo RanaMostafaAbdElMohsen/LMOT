@@ -17,6 +17,7 @@ from .datasets.crowdhuman import CrowdHuman
 from .datasets.kitti_tracking import KITTITracking
 from .datasets.custom_dataset import CustomDataset
 from .datasets.mot_ch import MOTCH
+from .datasets.mix_mots import MIXMOTS
 
 dataset_factory = {
   'custom': CustomDataset,
@@ -27,7 +28,8 @@ dataset_factory = {
   'nuscenes': nuScenes,
   'crowdhuman': CrowdHuman,
   'kitti_tracking': KITTITracking,
-  'mot_ch' : MOTCH
+  'mot_ch' : MOTCH,
+  'mix_mots' : MIXMOTS
 }
 
 

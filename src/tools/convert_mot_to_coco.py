@@ -4,8 +4,8 @@ import json
 import cv2
 
 # Use the same script for MOT16
-# DATA_PATH = '../../data/mot16/'
-DATA_PATH = '../../data/mot17/'
+DATA_PATH = '/home/rana/Downloads/MOT16/'
+# DATA_PATH = '../../data/mot17/'
 OUT_PATH = DATA_PATH + 'annotations/'
 SPLITS = ['train_half', 'val_half', 'train', 'test']
 HALF_VIDEO = True
