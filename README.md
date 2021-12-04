@@ -11,7 +11,7 @@ CrowdHuman with Half MOT17 Train
 
 |  MOTA     | 
 |-----------|
-| 72.0      | 
+| 72.2      | 
 
 Google drive Link : https://drive.google.com/drive/folders/1HYmGzHAmukh7HTj0TkBp5iEITiRAVLfj?usp=sharing
 
