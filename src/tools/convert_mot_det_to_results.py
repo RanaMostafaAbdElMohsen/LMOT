@@ -2,11 +2,11 @@ import json
 import numpy as np
 import os
 from collections import defaultdict
-split = 'val_half'
+split = 'test'
 
-DET_PATH = '../../data/mot17/'
-ANN_PATH = '../../data/mot17/annotations/{}.json'.format(split)
-OUT_DIR = '../../data/mot17/results/'
+DET_PATH = '/home/rana/Downloads/MOT20/'
+ANN_PATH = '/home/rana/Downloads/MOT20/annotations/{}.json'.format(split)
+OUT_DIR = '/home/rana/Downloads/MOT20/results/'
 OUT_PATH = OUT_DIR + '{}_det.json'.format(split)
 
 if __name__ == '__main__':

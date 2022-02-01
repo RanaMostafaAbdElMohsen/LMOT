@@ -155,7 +155,7 @@ class STrack(BaseTrack):
 class Tracker(object):
     def __init__(self, args, frame_rate=30):
         self.args = args
-        self.det_thresh = 0.4
+        self.det_thresh = args.new_thresh
         self.buffer_size = int(frame_rate / 30.0 * args.track_buffer)
         self.max_time_lost = self.buffer_size
         self.reset()
@@ -202,9 +202,21 @@ class Tracker(object):
             track_thres = 0.2
             out_thres = 0.1
 
+            # remain_inds = scores >= self.args.track_thresh
             remain_inds = scores >= track_thres
             dets = bboxes[remain_inds]
-            scores_keep = scores[remain_inds]    
+            scores_keep = scores[remain_inds]
+            
+            
+            # inds_low = scores > self.args.out_thresh
+            # inds_high = scores < self.args.track_thresh
+
+            inds_low = scores > out_thres
+            inds_high = scores < track_thres
+
+            inds_second = np.logical_and(inds_low, inds_high)
+            dets_second = bboxes[inds_second]
+            scores_second = scores[inds_second]      
 
         else:
             dets =[]
@@ -232,7 +244,7 @@ class Tracker(object):
         # Predict the current location with KF
         STrack.multi_predict(strack_pool)
         dists = matching.iou_distance(strack_pool, detections)
-        matches, u_track, u_detection = matching.linear_assignment(dists, thresh=0.8)
+        matches, u_track, u_detection = matching.linear_assignment(dists, thresh=self.args.match_thresh)
 
         for itracked, idet in matches:
             track = strack_pool[itracked]
@@ -250,12 +262,13 @@ class Tracker(object):
                 track.mark_lost()
                 lost_stracks.append(track)
 
-        # unconfirmed = [strack_pool[i] for i in u_track if strack_pool[i].state == TrackState.Tracked]
-        # '''Deal with unconfirmed tracks, usually tracks with only one beginning frame'''
         STrack.multi_predict(unconfirmed)
-        detections = [detections[i] for i in u_detection]
+
+        unconfirmed = unconfirmed + [strack_pool[i] for i in u_track if strack_pool[i].state == TrackState.Tracked]
+        '''Deal with unconfirmed tracks, usually tracks with only one beginning frame'''
+        detections = [detections[i] for i in u_detection if detections[i].score >=0.4]
         dists = matching.iou_distance(unconfirmed, detections)
-        matches, u_unconfirmed, u_detection = matching.linear_assignment(dists, thresh=0.6)
+        matches, u_unconfirmed, u_detection = matching.linear_assignment(dists, thresh=0.7)
         for itracked, idet in matches:
             unconfirmed[itracked].update(detections[idet], self.frame_id)
             activated_starcks.append(unconfirmed[itracked])
@@ -301,23 +314,7 @@ class Tracker(object):
         
         self.tracks = ret
         return ret        
-
-def retrieve_matching_assignment(dists):
-    matched_indices =[]
-    for row_idx in range(len(dists)):
-
-        minimum_det, sec_minimum_det = np.partition(dists[row_idx, :], 1)[0:2]
-        
-        if minimum_det < 0.8 and sec_minimum_det - minimum_det >= 0.1:
-            col_idx = np.where(dists[row_idx,:]==minimum_det)[0][0]
-            minimum_track, sec_minimum_track = np.partition(dists[:, col_idx], 1)[0:2]
-            if minimum_track < 0.8 and sec_minimum_track - minimum_track >= 0.1:
-                    matched_indices.append([row_idx, col_idx])
-
-    return np.array(matched_indices)
-
-    
-        
+       
 
 def joint_stracks(tlista, tlistb):
     exists = {}

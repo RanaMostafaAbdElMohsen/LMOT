@@ -22,7 +22,7 @@ class MOT(GenericDataset):
     print('Using MOT {} {}'.format(self.year, self.dataset_version))
     data_dir = os.path.join(opt.data_dir, 'MOT{}'.format(self.year))
 
-    if opt.dataset_version in ['17trainval', '17test', '16train']:
+    if opt.dataset_version in ['17trainval', '17test', '16train','16test', '20train', '20test']:
       ann_file = '{}.json'.format('train' if split == 'train' else \
         'test')
     elif opt.dataset_version == '17halftrain':

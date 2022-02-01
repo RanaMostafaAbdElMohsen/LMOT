@@ -12,14 +12,14 @@ from .mot_online import matching
 
 class STrack(BaseTrack):
     shared_kalman = KalmanFilter()
-    def __init__(self, tlwh, score, cls):
+    def __init__(self, tlwh, score):
 
         # wait activate
         self._tlwh = np.asarray(tlwh, dtype=np.float)
         self.kalman_filter = None
         self.mean, self.covariance = None, None
         self.is_activated = False
-        self.cls = cls
+
         self.score = score
         self.tracklet_len = 0
 
@@ -155,7 +155,7 @@ class STrack(BaseTrack):
 class Tracker(object):
     def __init__(self, args, frame_rate=30):
         self.args = args
-        self.det_thresh = 0.4
+        self.det_thresh = args.new_thresh
         self.buffer_size = int(frame_rate / 30.0 * args.track_buffer)
         self.max_time_lost = self.buffer_size
         self.reset()
@@ -163,7 +163,7 @@ class Tracker(object):
     # below has no effect to final output, just to be compatible to codebase
     def init_track(self, results):
         for item in results:
-            if item['score'] > self.opt.new_thresh :
+            if item['score'] > self.opt.new_thresh and item['class'] == 1:
                 self.id_count += 1
                 item['active'] = 1
                 item['age'] = 1
@@ -193,18 +193,29 @@ class Tracker(object):
         detections = []
         detections_second = []
         
-        scores = np.array([item['score'] for item in results], np.float32)
-        classes = np.array([item['class'] for item in results])
+        scores = np.array([item['score'] for item in results if item['class'] == 1], np.float32)
         if scores.size != 0:
-            bboxes = np.vstack([item['bbox'] for item in results])  # N x 4, x1y1x2y2
+            bboxes = np.vstack([item['bbox'] for item in results if item['class'] == 1])  # N x 4, x1y1x2y2
             
             #Modified
             track_thres = 0.2
             out_thres = 0.1
 
+            # remain_inds = scores >= self.args.track_thresh
             remain_inds = scores >= track_thres
             dets = bboxes[remain_inds]
-            scores_keep = scores[remain_inds]    
+            scores_keep = scores[remain_inds]
+            
+            
+            # inds_low = scores > self.args.out_thresh
+            # inds_high = scores < self.args.track_thresh
+
+            inds_low = scores > out_thres
+            inds_high = scores < track_thres
+
+            inds_second = np.logical_and(inds_low, inds_high)
+            dets_second = bboxes[inds_second]
+            scores_second = scores[inds_second]      
 
         else:
             dets =[]
@@ -213,8 +224,8 @@ class Tracker(object):
         
         if len(dets) > 0:
             '''Detections'''
-            detections = [STrack(STrack.tlbr_to_tlwh(tlbr), s, c) for
-                          (tlbr, s, c) in zip(dets, scores_keep, classes)]
+            detections = [STrack(STrack.tlbr_to_tlwh(tlbr), s) for
+                          (tlbr, s) in zip(dets, scores_keep)]
         else:
             detections = []
 
@@ -232,7 +243,7 @@ class Tracker(object):
         # Predict the current location with KF
         STrack.multi_predict(strack_pool)
         dists = matching.iou_distance(strack_pool, detections)
-        matches, u_track, u_detection = matching.linear_assignment(dists, thresh=0.8)
+        matches, u_track, u_detection = matching.linear_assignment(dists, thresh=self.args.match_thresh)
 
         for itracked, idet in matches:
             track = strack_pool[itracked]
@@ -250,12 +261,13 @@ class Tracker(object):
                 track.mark_lost()
                 lost_stracks.append(track)
 
-        # unconfirmed = [strack_pool[i] for i in u_track if strack_pool[i].state == TrackState.Tracked]
-        # '''Deal with unconfirmed tracks, usually tracks with only one beginning frame'''
         STrack.multi_predict(unconfirmed)
-        detections = [detections[i] for i in u_detection]
+
+        unconfirmed = unconfirmed + [strack_pool[i] for i in u_track if strack_pool[i].state == TrackState.Tracked]
+        '''Deal with unconfirmed tracks, usually tracks with only one beginning frame'''
+        detections = [detections[i] for i in u_detection if detections[i].score >=0.4]
         dists = matching.iou_distance(unconfirmed, detections)
-        matches, u_unconfirmed, u_detection = matching.linear_assignment(dists, thresh=0.6)
+        matches, u_unconfirmed, u_detection = matching.linear_assignment(dists, thresh=0.7)
         for itracked, idet in matches:
             unconfirmed[itracked].update(detections[idet], self.frame_id)
             activated_starcks.append(unconfirmed[itracked])
@@ -296,28 +308,12 @@ class Tracker(object):
             track_dict['ct'] = [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2]
             track_dict['active'] = 1 if track.is_activated else 0
             track_dict['tracking_id'] = track.track_id
-            track_dict['class'] = track.cls
+            track_dict['class'] = 1
             ret.append(track_dict)
         
         self.tracks = ret
         return ret        
 
-def retrieve_matching_assignment(dists):
-    matched_indices =[]
-    for row_idx in range(len(dists)):
-
-        minimum_det, sec_minimum_det = np.partition(dists[row_idx, :], 1)[0:2]
-        
-        if minimum_det < 0.8 and sec_minimum_det - minimum_det >= 0.1:
-            col_idx = np.where(dists[row_idx,:]==minimum_det)[0][0]
-            minimum_track, sec_minimum_track = np.partition(dists[:, col_idx], 1)[0:2]
-            if minimum_track < 0.8 and sec_minimum_track - minimum_track >= 0.1:
-                    matched_indices.append([row_idx, col_idx])
-
-    return np.array(matched_indices)
-
-    
-        
 
 def joint_stracks(tlista, tlistb):
     exists = {}
@@ -370,3 +366,4 @@ def remove_fp_stracks(stracksa, n_frame=10):
         if num < n_frame:
             remain.append(t)
     return remain
+

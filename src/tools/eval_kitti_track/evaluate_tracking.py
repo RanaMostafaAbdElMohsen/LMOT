@@ -90,14 +90,14 @@ class trackingEvaluation(object):
              missed         - number of missed targets (FN)
     """
 
-    def __init__(self, t_sha, gt_path="./tools/eval_kitti_track/data/tracking",\
+    def __init__(self, t_sha, gt_path="/home/rana/Documents/Research_Projects/CenterTrack/Masters_Thesis/src/tools/eval_kitti_track/data/tracking",\
         split_version='', min_overlap=0.5, max_truncation = 0, min_height = 25, 
         max_occlusion = 2, mail=None, cls="car"):
         # get number of sequences and
         # get number of frames per sequence from test mapping
         # (created while extracting the benchmark)
-        filename_test_mapping = "./tools/eval_kitti_track/data/tracking/" + \
-          "evaluate_tracking{}.seqmap".format(split_version)
+        filename_test_mapping = "/home/rana/Documents/Research_Projects/CenterTrack/Masters_Thesis/src/tools/eval_kitti_track/data/tracking/" + \
+          "evaluate_trackingval_half.seqmap"
         self.n_frames         = []
         self.sequence_name    = []
         with open(filename_test_mapping, "r") as fh:

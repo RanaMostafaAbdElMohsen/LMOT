@@ -7,8 +7,8 @@ import cv2
 DATA_PATH = '/home/rana/Downloads/MOT16/'
 # DATA_PATH = '../../data/mot17/'
 OUT_PATH = DATA_PATH + 'annotations/'
-SPLITS = ['train_half', 'val_half', 'train', 'test']
-HALF_VIDEO = True
+SPLITS = ['train']
+HALF_VIDEO = False
 CREATE_SPLITTED_ANN = True
 CREATE_SPLITTED_DET = True
 
@@ -116,7 +116,7 @@ if __name__ == '__main__':
       image_cnt += num_images
     print('loaded {} for {} images and {} samples'.format(
       split, len(out['images']), len(out['annotations'])))
-    json.dump(out, open(out_path, 'w'))
+    # json.dump(out, open(out_path, 'w'))
         
         
 

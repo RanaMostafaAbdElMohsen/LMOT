@@ -18,6 +18,7 @@ from .datasets.kitti_tracking import KITTITracking
 from .datasets.custom_dataset import CustomDataset
 from .datasets.mot_ch import MOTCH
 from .datasets.mix_mots import MIXMOTS
+from .datasets.mot_20_ch import MOT20CH
 
 dataset_factory = {
   'custom': CustomDataset,
@@ -29,7 +30,8 @@ dataset_factory = {
   'crowdhuman': CrowdHuman,
   'kitti_tracking': KITTITracking,
   'mot_ch' : MOTCH,
-  'mix_mots' : MIXMOTS
+  'mix_mots' : MIXMOTS,
+  'mot20_ch': MOT20CH
 }
 
 
