@@ -233,7 +233,6 @@ class Tracker(object):
         STrack.multi_predict(strack_pool)
         dists = matching.iou_distance(strack_pool, detections)
         matches, u_track, u_detection = matching.linear_assignment(dists, thresh=0.8)
-
         for itracked, idet in matches:
             track = strack_pool[itracked]
             det = detections[idet]
@@ -255,7 +254,7 @@ class Tracker(object):
         STrack.multi_predict(unconfirmed)
         detections = [detections[i] for i in u_detection]
         dists = matching.iou_distance(unconfirmed, detections)
-        matches, u_unconfirmed, u_detection = matching.linear_assignment(dists, thresh=0.6)
+        matches, u_unconfirmed, u_detection = matching.linear_assignment(dists, thresh=0.8)
         for itracked, idet in matches:
             unconfirmed[itracked].update(detections[idet], self.frame_id)
             activated_starcks.append(unconfirmed[itracked])

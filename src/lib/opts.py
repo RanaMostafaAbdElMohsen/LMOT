@@ -120,7 +120,7 @@ class opts(object):
                              help='drop learning rate by 10.')
     self.parser.add_argument('--save_point', type=str, default='10',
                              help='when to save the model to disk.')
-    self.parser.add_argument('--num_epochs', type=int, default=60,
+    self.parser.add_argument('--num_epochs', type=int, default=65,
                              help='total training epochs.')
     self.parser.add_argument('--batch_size', type=int, default=6,
                              help='batch size')

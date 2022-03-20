@@ -7,3 +7,5 @@ exp/*
 src/lib/dataset/__pycache__/*
 src/tools/eval_kitti_track/__pycache__/*
 .vscode
+src/lib/utils/mot_online/__pycache__/*
+src/lib/model/networks/__pycache__/*
