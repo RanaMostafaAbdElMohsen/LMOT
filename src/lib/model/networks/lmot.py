@@ -10,9 +10,36 @@ def fill_fc_weights(layers):
             if m.bias is not None:
                 nn.init.constant_(m.bias, 0)
 
-class TrackDla(nn.Module):
+def conv3x3(in_channels, out_channels, stride=1):
+    return nn.Conv2d(in_channels, out_channels, kernel_size=3, 
+                     stride=stride, padding=1, bias=False)
+
+class ResidualBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1, downsample=None):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = conv3x3(in_channels, out_channels, stride)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(out_channels, out_channels)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.downsample = downsample
+        
+    def forward(self, x):
+        residual = x
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+        if self.downsample:
+            residual = self.downsample(x)
+        out += residual
+        out = self.relu(out)
+        return out
+
+class LMOT(nn.Module):
     def __init__(self, heads, head_convs, opt=None):
-        super(TrackDla, self).__init__()
+        super(LMOT, self).__init__()
         if opt is not None and opt.head_kernel != 3:
           print('Using head kernel:', opt.head_kernel)
           head_kernel = opt.head_kernel
@@ -70,17 +97,27 @@ class TrackDla(nn.Module):
 
         self.trans = linear_tiny(511, 4, 2040)
 
-        dropout=0.1
+        dropout=0.07
+
+        self.depths =3
+
+        self.res_layer = ResidualBlock(64,64)
         
         self.first_layer= nn.Sequential(
             nn.Conv2d(320, 256, 3,stride=1, padding=1),
-            nn.BatchNorm2d(256, momentum=0.1),
+            nn.BatchNorm2d(256),
             nn.ReLU(inplace=True),
-            nn.Conv2d(256, 128, 3 ,stride=1, padding=1),
-            nn.BatchNorm2d(128, momentum=0.1),
+            nn.Conv2d(256, 256, 3 ,stride=1, padding=1),
+            nn.BatchNorm2d(256),
             nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(128, 128, kernel_size=2, stride=2),
-            nn.BatchNorm2d(128, momentum=0.1),
+            nn.Conv2d(256, 256, 3 ,stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, 3 ,stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2),
+            nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
             nn.Dropout(dropout)
         )
@@ -89,30 +126,35 @@ class TrackDla(nn.Module):
 
         self.second_layer= nn.Sequential(
             nn.Conv2d(256, 128, 3,stride=1, padding=1),
-            nn.BatchNorm2d(128, momentum=0.1),
+            nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
             nn.Conv2d(128, 128, 3 ,stride=1, padding=1),
-            nn.BatchNorm2d(128, momentum=0.1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(128, 128, 3 ,stride=1, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(128, 128, 3 ,stride=1, padding=1),
+            nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
             nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2),
-            nn.BatchNorm2d(64, momentum=0.1),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Dropout(dropout)
         )
 
-        self.bottle_neck_layer = nn.Sequential(
+        self.last_layer = nn.Sequential(
             nn.Conv2d(128, 128, 3, stride=1, padding=1),
-            nn.BatchNorm2d(128, momentum=0.1),
+            nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
             nn.Conv2d(128, 128, 3, stride=1, padding=1),
-            nn.BatchNorm2d(128, momentum=0.1),
+            nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
-            nn.Dropout(dropout),
             nn.Conv2d(128, 64, 3 ,stride=1, padding=1),
-            nn.BatchNorm2d(64, momentum=0.1),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Conv2d(64, 64, 3 ,stride=1, padding=1),
-            nn.BatchNorm2d(64, momentum=0.1),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
         )
 
@@ -127,6 +169,9 @@ class TrackDla(nn.Module):
 
         feats = trans_feats.reshape(trans_feats.shape[0],trans_feats.shape[1], 34, 60)
 
+        for x in range(self.depths):
+          feats = self.res_layer(feats)
+
         feats = torch.cat([feats, image_features[2]], dim=1)
 
         first_layer_feats = self.first_layer(feats)
@@ -137,9 +182,9 @@ class TrackDla(nn.Module):
 
         feats = torch.cat([second_layer_feats, image_features[0]], dim=1)
 
-        bottle_neck_layer = self.bottle_neck_layer(feats)
+        last_layer = self.last_layer(feats)
 
-        feats=[bottle_neck_layer]
+        feats=[last_layer]
         
         out = []
         if self.opt.model_output_list:

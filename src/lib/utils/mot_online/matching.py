@@ -57,6 +57,27 @@ def hungarian_algo(dist, tracks, dets):
 
     return matched_indices, unmatched_tracks, unmatched_dets
 
+def greedy_assignment(dist, tracks, dets):
+    matched_indices = []
+    if dist.shape[1] == 0:
+        matched_indices = np.array(matched_indices, np.int32).reshape(-1, 2)
+        unmatched_dets = [d for d in range(np.asarray(dets).shape[0]) \
+            if not (d in matched_indices[:, 1])]
+        unmatched_tracks = [d for d in range(np.asarray(tracks).shape[0]) \
+            if not (d in matched_indices[:, 0])]
+        return matched_indices, unmatched_tracks, unmatched_dets
+    for i in range(dist.shape[0]):
+        j = dist[i].argmin()
+        if dist[i][j] < 1e16:
+            dist[:, j] = 1e18
+            matched_indices.append([i, j])
+    matched_indices = np.array(matched_indices, np.int32).reshape(-1, 2)
+    unmatched_dets = [d for d in range(np.asarray(dets).shape[0]) \
+        if not (d in matched_indices[:, 1])]
+    unmatched_tracks = [d for d in range(np.asarray(tracks).shape[0]) \
+        if not (d in matched_indices[:, 0])]
+
+    return matched_indices, unmatched_tracks, unmatched_dets
 
 def linear_assignment(cost_matrix, thresh):
     if cost_matrix.size == 0:

@@ -15,7 +15,7 @@ from utils.ddd_utils import compute_box_3d, project_to_image
 
 class KITTITracking(GenericDataset):
   num_categories = 3
-  default_resolution = [384, 1280]
+  default_resolution = [544, 960]
   class_name = ['Pedestrian', 'Car', 'Cyclist']
   # negative id is for "not as negative sample for abs(id)".
   # 0 for ignore losses for all categories in the bounding box region
@@ -49,7 +49,7 @@ class KITTITracking(GenericDataset):
 
 
   def save_results(self, results, save_dir):
-    results_dir = os.path.join(save_dir, 'results_kitti_tracking')
+    results_dir = os.path.join(save_dir, 'results_kitti_tracking', self.opt.dataset_version)
     if not os.path.exists(results_dir):
       os.mkdir(results_dir)
 
@@ -97,7 +97,7 @@ class KITTITracking(GenericDataset):
 
   def run_eval(self, results, save_dir):
     self.save_results(results, save_dir)
-    os.system('python tools/eval_kitti_track/evaluate_tracking.py ' + \
-              '{}/results_kitti_tracking/ {}'.format(
-                save_dir, self.opt.dataset_version))
+    os.system('python /home/rana/Documents/Research_Projects/CenterTrack/Masters_Thesis/src/tools/eval_kitti_track/evaluate_tracking.py ' + \
+              '{}/results_kitti_tracking/{} {}'.format(
+                save_dir, self.opt.dataset_version, self.opt.dataset_version))
     

@@ -14,6 +14,22 @@ def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=1, bias=False)
 
+class SELayer(nn.Module):
+    def __init__(self, channel, reduction=16):
+        super(SELayer, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channel, channel // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(channel // reduction, channel, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y.expand_as(x)
 
 class BasicBlock(nn.Module):
     def __init__(self, inplanes, planes, stride=1, dilation=1):
@@ -28,6 +44,7 @@ class BasicBlock(nn.Module):
                                bias=False, dilation=dilation)
         self.bn2 = nn.BatchNorm2d(planes, momentum=BN_MOMENTUM)
         self.stride = stride
+        self.se = SELayer(planes)
 
     def forward(self, x, residual=None):
         if residual is None:
@@ -39,6 +56,8 @@ class BasicBlock(nn.Module):
 
         out = self.conv2(out)
         out = self.bn2(out)
+
+        out = self.se(out)
 
         out += residual
         out = self.relu(out)
@@ -280,7 +299,7 @@ class DLA(nn.Module):
 
 
 def dla34(pretrained=True, **kwargs):  # DLA-34
-    model = DLA([1, 1, 1, 2, 2, 1],
+    model = DLA([1, 1, 1, 2, 4],
                 [16, 32, 64, 128, 256],
                 block=BasicBlock, **kwargs)
     if pretrained:
