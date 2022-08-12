@@ -243,11 +243,11 @@ class Tracker(object):
                 track.re_activate(det, self.frame_id, new_id=False)
                 refind_stracks.append(track)
 
-        for it in u_track:
-            track = strack_pool[it]
-            if not track.state == TrackState.Lost:
-                track.mark_lost()
-                lost_stracks.append(track)
+        # for it in u_track:
+        #     track = strack_pool[it]
+        #     if not track.state == TrackState.Lost:
+        #         track.mark_lost()
+        #         lost_stracks.append(track)
 
         # unconfirmed = [strack_pool[i] for i in u_track if strack_pool[i].state == TrackState.Tracked]
         # '''Deal with unconfirmed tracks, usually tracks with only one beginning frame'''
@@ -258,11 +258,15 @@ class Tracker(object):
         for itracked, idet in matches:
             unconfirmed[itracked].update(detections[idet], self.frame_id)
             activated_starcks.append(unconfirmed[itracked])
-        for it in u_unconfirmed:
-            track = unconfirmed[it]
-            track.mark_removed()
-            removed_stracks.append(track)
-
+        # for it in u_unconfirmed:
+        #     track = unconfirmed[it]
+        #     track.mark_removed()
+        #     removed_stracks.append(track)
+        for it in u_track:
+            track = strack_pool[it]
+            if not track.state == TrackState.Lost:
+                track.mark_lost()
+                lost_stracks.append(track)
         """ Step 4: Init new stracks"""
         for inew in u_detection:
             track = detections[inew]

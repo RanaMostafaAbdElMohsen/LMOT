@@ -182,25 +182,6 @@ def linear_tiny(tokens_number, channels, output_size, patch_size=32, pretrained=
     model.default_cfg = _cfg()
     return model
 
-
-# @register_model
-# def linear_base(pretrained=False, **kwargs):
-#     model = LinearVisionTransformer(
-#         patch_size=16, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True,
-#         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
-#     model.default_cfg = _cfg()
-#     return model
-
-
-# @register_model
-# def linear_large(pretrained=False, **kwargs):
-#     model = LinearVisionTransformer(
-#         patch_size=32, embed_dim=1024, depth=24, num_heads=16, mlp_ratio=4, qkv_bias=True,
-#         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
-#     model.default_cfg = _cfg()
-#     return model
-
-
 # if __name__ == '__main__':
 
 #     # Test
